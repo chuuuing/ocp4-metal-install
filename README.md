@@ -16,6 +16,14 @@
   - [Access the OpenShift Console](#access-the-openshift-console)
   - [Troubleshooting](#troubleshooting)
 
+## Reference
+
+
+
+- [Redhat: User-provisioned infrastructure installation on bare metal](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/installing_on_bare_metal/user-provisioned-infrastructure)
+
+<!-- - [Requirements for CP4D Installation]() -->
+
 ## Architecture Diagram
 
 ![Architecture Diagram](./diagram/Architecture.png)
@@ -40,63 +48,67 @@
 
 > VMware ESXi used in this guide
 
+
 1. Copy the CentOS 8 iso to an ESXi datastore
 1. Create a new Port Group called 'OCP' under Networking
     - (In case of VirtualBox choose "Internal Network" when creating each VM and give it the same name. ocp for instance)
     - (In case of ProxMox you may use the same network bridge and choose a specific VLAN tag. 50 for instance) 
-1. Create 3 Control Plane virtual machines with minimum settings:
-   - Name: ocp-cp-# (Example ocp-cp-1)
-   - 4vcpu
-   - 8GB RAM
-   - 50GB HDD
-   - NIC connected to the OCP network
-   - Load the rhcos-X.X.X-x86_64-installer.x86_64.iso image into the CD/DVD drive
-1. Create 2 Worker virtual machines (or more if you want) with minimum settings:
-   - Name: ocp-w-# (Example ocp-w-1)
-   - 4vcpu
-   - 8GB RAM
-   - 50GB HDD
-   - NIC connected to the OCP network
-   - Load the rhcos-X.X.X-x86_64-installer.x86_64.iso image into the CD/DVD drive
-1. Create a Bootstrap virtual machine (this vm will be deleted once installation completes) with minimum settings:
-   - Name: ocp-boostrap
-   - 4vcpu
-   - 8GB RAM
-   - 50GB HDD
-   - NIC connected to the OCP network
-   - Load the rhcos-X.X.X-x86_64-installer.x86_64.iso image into the CD/DVD drive
-1. Create a Services virtual machine with minimum settings:
-   - Name: ocp-svc
-   - 4vcpu
-   - 4GB RAM
-   - 120GB HDD
+1. Create a Bastion Host virtual machine with the following settings:
+   - Name: ocp-bastion
+   - 8vcpu
+   - 32GB RAM
+   - 150GB + 1TB Virtual Disk  - for Container Registry
    - NIC1 connected to the VM Network (LAN)
    - NIC2 connected to the OCP network
    - Load the CentOS_8.iso image into the CD/DVD drive
+1. Create a (temporary) Bootstrap virtual machine (this vm will be deleted once installation completes) with minimum settings:
+   - Name: ocp-boostrap
+   - 4vcpu
+   - 8GB RAM
+   - 50GB Virtual Disk
+   - NIC connected to the OCP network
+   - Load the rhcos-X.X.X-x86_64-installer.x86_64.iso image into the CD/DVD drive
+1. Create 3 Control Plane(Master) virtual machines with the following settings: (resources requirements for CP4D)
+   - Name: ocp-cp-# (Example ocp-cp-1)
+   - 8vcpu
+   - 32GB RAM
+   - 300GB Virtual Disk
+   - NIC connected to the OCP network
+   - Load the rhcos-X.X.X-x86_64-installer.x86_64.iso image into the CD/DVD drive
+1. Create 5 Worker virtual machines (or more if you want) with the following settings: (resources requirements for CP4D)
+   - Name: ocp-w-# (Example ocp-w-1)
+   - 32vcpu
+   - 126GB RAM
+   - 300GB Virtual Disk
+   - NIC connected to the OCP network
+   - Load the rhcos-X.X.X-x86_64-installer.x86_64.iso image into the CD/DVD drive
+
 1. Boot all virtual machines so they each are assigned a MAC address
-1. Shut down all virtual machines except for 'ocp-svc'
+1. Shut down all virtual machines except for 'ocp-bastion'
 1. Use the VMware ESXi dashboard to record the MAC address of each vm, these will be used later to set static IPs
+1. Ensure you enable the `disk.EnableUUID` parameter on all virtual machines in your cluster. (documented [here](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/installing_on_bare_metal/user-provisioned-infrastructure#installation-requirements-baremetal-vsphere_installing-bare-metal))
+
 
 ## Configure Environmental Services
 
-1. Install CentOS8 on the ocp-svc host
+1. Install CentOS8 on the ocp-bastion host
 
    - Remove the home dir partition and assign all free storage to '/'
    - Optionally you can install the 'Guest Tools' package to have monitoring and reporting in the VMware ESXi dashboard
-   - Enable the LAN NIC only to obtain a DHCP address from the LAN network and make note of the IP address (ocp-svc_IP_address) assigned to the vm
+   - Enable the LAN NIC only to obtain a DHCP address from the LAN network and make note of the IP address (ocp-bastion_IP_address) assigned to the vm
 
-1. Boot the ocp-svc VM
+1. Boot the ocp-bastion VM
 
-1. Move the files downloaded from the RedHat Cluster Manager site to the ocp-svc node
+1. Move the files downloaded from the RedHat Cluster Manager site to the ocp-bastion node
 
    ```bash
-   scp ~/Downloads/openshift-install-linux.tar.gz ~/Downloads/openshift-client-linux.tar.gz ~/Downloads/rhcos-metal.x86_64.raw.gz root@{ocp-svc_IP_address}:/root/
+   scp ~/Downloads/openshift-install-linux.tar.gz ~/Downloads/openshift-client-linux.tar.gz ~/Downloads/rhcos-metal.x86_64.raw.gz root@{ocp-bastion_IP_address}:/root/
    ```
 
-1. SSH to the ocp-svc vm
+1. SSH to the ocp-bastion vm
 
    ```bash
-   ssh root@{ocp-svc_IP_address}
+   ssh root@{ocp-bastion_IP_address}
    ```
 
 1. Extract Client tools and copy them to `/usr/local/bin`
@@ -131,10 +143,10 @@
    dnf install git -y
    ```
 
-1. Download [config files](https://github.com/ryanhay/ocp4-metal-install) for each of the services
+1. Download [config files](https://github.com/chuuuing/ocp4-metal-install) for each of the services
 
    ```bash
-   git clone https://github.com/ryanhay/ocp4-metal-install
+   git clone https://github.com/chuuuing/ocp4-metal-install
    ```
 
 1. OPTIONAL: Create a file '~/.vimrc' and paste the following (this helps with editing in vim, particularly yaml files):
@@ -163,50 +175,72 @@
 
    > If changes arent applied automatically you can bounce the NIC with `nmcli connection down ens224` and `nmcli connection up ens224`
 
-1. Setup firewalld
+1. Install & configure DHCP
 
-   Create **internal** and **external** zones
+   Install the DHCP Server
 
    ```bash
-   nmcli connection modify ens224 connection.zone internal
-   nmcli connection modify ens192 connection.zone external
+   dnf install dhcp-server -y
    ```
 
-   View zones:
+   Edit dhcpd.conf from the cloned git repo to have the correct mac address for each host and copy the conf file to the correct location for the DHCP service to use
 
    ```bash
-   firewall-cmd --get-active-zones
+   cp ~/ocp4-metal-install/dhcpd.conf /etc/dhcp/dhcpd.conf
    ```
 
-   Set masquerading (source-nat) on the both zones.
-
-   So to give a quick example of source-nat - for packets leaving the external interface, which in this case is ens192 - after they have been routed they will have their source address altered to the interface address of ens192 so that return packets can find their way back to this interface where the reverse will happen.
+   Configure the Firewall
 
    ```bash
-   firewall-cmd --zone=external --add-masquerade --permanent
-   firewall-cmd --zone=internal --add-masquerade --permanent
-   ```
-
-   Reload firewall config
-
-   ```bash
+   firewall-cmd --add-service=dhcp --permanent
    firewall-cmd --reload
    ```
 
-   Check the current settings of each zone
+   Enable and start the service
 
    ```bash
-   firewall-cmd --list-all --zone=internal
-   firewall-cmd --list-all --zone=external
+   systemctl enable --now dhcpd
+   systemctl status dhcpd
    ```
 
-   When masquerading is enabled so is ip forwarding which basically makes this host a router. Check:
+
+1. Install & configure HAProxy - for load balancing (Documented [here](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/installing_on_bare_metal/user-provisioned-infrastructure#installation-load-balancing-user-infra_installing-restricted-networks-bare-metal))
+
+   Install HAProxy
 
    ```bash
-   cat /proc/sys/net/ipv4/ip_forward
+   dnf install haproxy -y
    ```
 
-1. Install and configure BIND DNS
+   Copy HAProxy config
+
+   ```bash
+   cp ~/ocp4-metal-install/haproxy.cfg /etc/haproxy/haproxy.cfg
+   ```
+
+   Configure the Firewall
+
+   > Note: Opening port 9000 allows access to HAProxy stats that are useful for monitoring and troubleshooting. The UI can be accessed at: `http://{ocp-bastion_IP_address}:9000/stats`
+
+   ```bash
+   firewall-cmd --add-port=6443/tcp --permanent # kube-api-server on control plane nodes
+   firewall-cmd --add-port=22623/tcp --permanent # machine-config server
+   firewall-cmd --add-service=http --permanent # web services hosted on worker nodes
+   firewall-cmd --add-service=https --permanent # web services hosted on worker nodes
+   firewall-cmd --add-port=9000/tcp --permanent # HAProxy Stats
+   firewall-cmd --reload
+   ```
+
+   Enable and start the service
+
+   ```bash
+   setsebool -P haproxy_connect_any 1 # SELinux name_bind access
+   systemctl enable --now haproxy
+   systemctl status haproxy
+   ```
+
+
+1. Install and configure BIND DNS (documented [here](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/installing_on_bare_metal/user-provisioned-infrastructure#installation-dns-user-infra_installing-restricted-networks-bare-metal))
 
    Install
 
@@ -214,27 +248,32 @@
    dnf install bind bind-utils -y
    ```
 
-   Apply configuration
+   Apply DNS server configuration
 
    ```bash
-   \cp ~/ocp4-metal-install/dns/named.conf /etc/named.conf
+   cp ~/ocp4-metal-install/dns/named.conf /etc/named.conf
    cp -R ~/ocp4-metal-install/dns/zones /etc/named/
+
+   # validate grammar
+   named-checkconf
    ```
 
    Configure the firewall for DNS
 
    ```bash
-   firewall-cmd --add-port=53/udp --zone=internal --permanent
    # for OCP 4.9 and later 53/tcp is required
-   firewall-cmd --add-port=53/tcp --zone=internal --permanent
+   firewall-cmd --add-port=53/udp --permanent
+   firewall-cmd --add-port=53/tcp --permanent
+
+   firewall-cmd --permanent --add-service=dns
    firewall-cmd --reload
    ```
 
    Enable and start the service
 
    ```bash
-   systemctl enable named
-   systemctl start named
+   # start now & when power on
+   systemctl enable --now named
    systemctl status named
    ```
 
@@ -260,36 +299,8 @@
    dig -x 192.168.22.200
    ```
 
-1. Install & configure DHCP
 
-   Install the DHCP Server
-
-   ```bash
-   dnf install dhcp-server -y
-   ```
-
-   Edit dhcpd.conf from the cloned git repo to have the correct mac address for each host and copy the conf file to the correct location for the DHCP service to use
-
-   ```bash
-   \cp ~/ocp4-metal-install/dhcpd.conf /etc/dhcp/dhcpd.conf
-   ```
-
-   Configure the Firewall
-
-   ```bash
-   firewall-cmd --add-service=dhcp --zone=internal --permanent
-   firewall-cmd --reload
-   ```
-
-   Enable and start the service
-
-   ```bash
-   systemctl enable dhcpd
-   systemctl start dhcpd
-   systemctl status dhcpd
-   ```
-
-1. Install & configure Apache Web Server
+1. Install & configure httpd Apache Web Server
 
    Install Apache
 
@@ -306,15 +317,14 @@
    Configure the firewall for Web Server traffic
 
    ```bash
-   firewall-cmd --add-port=8080/tcp --zone=internal --permanent
+   firewall-cmd --add-port=8080/tcp --permanent
    firewall-cmd --reload
    ```
 
    Enable and start the service
 
    ```bash
-   systemctl enable httpd
-   systemctl start httpd
+   systemctl enable --now httpd
    systemctl status httpd
    ```
 
@@ -323,45 +333,7 @@
    ```bash
    curl localhost:8080
    ```
-
-1. Install & configure HAProxy
-
-   Install HAProxy
-
-   ```bash
-   dnf install haproxy -y
-   ```
-
-   Copy HAProxy config
-
-   ```bash
-   \cp ~/ocp4-metal-install/haproxy.cfg /etc/haproxy/haproxy.cfg
-   ```
-
-   Configure the Firewall
-
-   > Note: Opening port 9000 in the external zone allows access to HAProxy stats that are useful for monitoring and troubleshooting. The UI can be accessed at: `http://{ocp-svc_IP_address}:9000/stats`
-
-   ```bash
-   firewall-cmd --add-port=6443/tcp --zone=internal --permanent # kube-api-server on control plane nodes
-   firewall-cmd --add-port=6443/tcp --zone=external --permanent # kube-api-server on control plane nodes
-   firewall-cmd --add-port=22623/tcp --zone=internal --permanent # machine-config server
-   firewall-cmd --add-service=http --zone=internal --permanent # web services hosted on worker nodes
-   firewall-cmd --add-service=http --zone=external --permanent # web services hosted on worker nodes
-   firewall-cmd --add-service=https --zone=internal --permanent # web services hosted on worker nodes
-   firewall-cmd --add-service=https --zone=external --permanent # web services hosted on worker nodes
-   firewall-cmd --add-port=9000/tcp --zone=external --permanent # HAProxy Stats
-   firewall-cmd --reload
-   ```
-
-   Enable and start the service
-
-   ```bash
-   setsebool -P haproxy_connect_any 1 # SELinux name_bind access
-   systemctl enable haproxy
-   systemctl start haproxy
-   systemctl status haproxy
-   ```
+1. ? Network Time Protocol (NTP) server 
 
 1. Install and configure NFS for the OpenShift Registry. It is a requirement to provide storage for the Registry, emptyDir can be specified if necessary.
 
@@ -391,9 +363,9 @@
    Set Firewall rules:
 
    ```bash
-   firewall-cmd --zone=internal --add-service mountd --permanent
-   firewall-cmd --zone=internal --add-service rpc-bind --permanent
-   firewall-cmd --zone=internal --add-service nfs --permanent
+   firewall-cmd --add-service mountd --permanent
+   firewall-cmd --add-service rpc-bind --permanent
+   firewall-cmd --add-service nfs --permanent
    firewall-cmd --reload
    ```
 
@@ -513,7 +485,7 @@
 
 ## Monitor the Bootstrap Process
 
-1. You can monitor the bootstrap process from the ocp-svc host at different log levels (debug, error, info)
+1. You can monitor the bootstrap process from the ocp-bastion host at different log levels (debug, error, info)
 
    ```bash
    ~/openshift-install --dir ~/ocp-install wait-for bootstrap-complete --log-level=debug
@@ -548,7 +520,7 @@
 
 ## Join Worker Nodes
 
-1. Setup 'oc' and 'kubectl' clients on the ocp-svc machine
+1. Setup 'oc' and 'kubectl' clients on the ocp-bastion machine
 
    ```bash
    export KUBECONFIG=~/ocp-install/auth/kubeconfig
@@ -556,7 +528,7 @@
    oc get nodes
    ```
 
-1. View and approve pending CSRs
+1. View and approve pending CSRs (documented [here](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/installing_on_bare_metal/user-provisioned-infrastructure#csr-management_installing-bare-metal))
 
    > Note: Once you approve the first set of CSRs additional 'kubelet-serving' CSRs will be created. These must be approved too.
    > If you do not see pending requests wait until you do.
@@ -643,14 +615,14 @@
 1. Append the following to your local workstations `/etc/hosts` file:
 
    > From your local workstation
-   > If you do not want to add an entry for each new service made available on OpenShift you can configure the ocp-svc DNS server to serve externally and create a wildcard entry for \*.apps.lab.ocp.lan
+   > If you do not want to add an entry for each new service made available on OpenShift you can configure the ocp-bastion DNS server to serve externally and create a wildcard entry for \*.apps.lab.ocp.lan
 
    ```bash
    # Open the hosts file
    sudo vi /etc/hosts
 
    # Append the following entries:
-   192.168.0.96 ocp-svc api.lab.ocp.lan console-openshift-console.apps.lab.ocp.lan oauth-openshift.apps.lab.ocp.lan downloads-openshift-console.apps.lab.ocp.lan alertmanager-main-openshift-monitoring.apps.lab.ocp.lan grafana-openshift-monitoring.apps.lab.ocp.lan prometheus-k8s-openshift-monitoring.apps.lab.ocp.lan thanos-querier-openshift-monitoring.apps.lab.ocp.lan
+   192.168.0.96 ocp-bastion api.lab.ocp.lan console-openshift-console.apps.lab.ocp.lan oauth-openshift.apps.lab.ocp.lan downloads-openshift-console.apps.lab.ocp.lan alertmanager-main-openshift-monitoring.apps.lab.ocp.lan grafana-openshift-monitoring.apps.lab.ocp.lan prometheus-k8s-openshift-monitoring.apps.lab.ocp.lan thanos-querier-openshift-monitoring.apps.lab.ocp.lan
    ```
 
 1. Navigate to the [OpenShift Console URL](https://console-openshift-console.apps.lab.ocp.lan) and log in as the 'admin' user
@@ -660,7 +632,7 @@
 
 ## Troubleshooting
 
-1. You can collect logs from all cluster hosts by running the following command from the 'ocp-svc' host:
+1. You can collect logs from all cluster hosts by running the following command from the 'ocp-bastion' host:
 
    ```bash
    ./openshift-install gather bootstrap --dir ocp-install --bootstrap=192.168.22.200 --master=192.168.22.201 --master=192.168.22.202 --master=192.168.22.203

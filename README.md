@@ -20,7 +20,7 @@
 
 
 
-- [Redhat: User-provisioned infrastructure installation on bare metal](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/installing_on_bare_metal/user-provisioned-infrastructure)
+- [Redhat: User-provisioned infrastructure installation on bare metal](https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/installing_on_bare_metal/installing-restricted-networks-bare-metal#installing-restricted-networks-bare-metal)
 
 <!-- - [Requirements for CP4D Installation]() -->
 
@@ -30,8 +30,8 @@
 
 ## Download Software
 
-1. Download [CentOS 8 x86_64 image](https://www.centos.org/centos-linux/)
-1. Login to [RedHat OpenShift Cluster Manager](https://cloud.redhat.com/openshift)
+1. Download [CentOS 8 x86_64 image](https://archive.kernel.org/centos-vault/)
+1. Login to [RedHat OpenShift Cluster Manager](https://console.redhat.com/openshift)
 1. Select 'Create Cluster' from the 'Clusters' navigation menu
 1. Select 'RedHat OpenShift Container Platform'
 1. Select 'Run on Bare Metal'
@@ -186,7 +186,7 @@
    Edit dhcpd.conf from the cloned git repo to have the correct mac address for each host and copy the conf file to the correct location for the DHCP service to use
 
    ```bash
-   cp ~/ocp4-metal-install/dhcpd.conf /etc/dhcp/dhcpd.conf
+   cp ~/ocp4-metal-install/files/dhcpd.conf /etc/dhcp/dhcpd.conf
    ```
 
    Configure the Firewall
@@ -215,7 +215,7 @@
    Copy HAProxy config
 
    ```bash
-   cp ~/ocp4-metal-install/haproxy.cfg /etc/haproxy/haproxy.cfg
+   cp ~/ocp4-metal-install/files/haproxy.cfg /etc/haproxy/haproxy.cfg
    ```
 
    Configure the Firewall
@@ -237,6 +237,11 @@
    setsebool -P haproxy_connect_any 1 # SELinux name_bind access
    systemctl enable --now haproxy
    systemctl status haproxy
+   ```
+
+   Double check:
+   ```bash
+   netstat -nltupe
    ```
 
 
@@ -295,6 +300,9 @@
 
    ```bash
    dig ocp.lan
+
+   dig +noall +answer @<nameserver_ip> random.apps.<cluster_name>.<base_domain>
+
    # The following should return the answer ocp-bootstrap.lab.ocp.lan from the local server
    dig -x 192.168.22.200
    ```
@@ -393,7 +401,7 @@
 1. Copy the install-config.yaml included in the clones repository to the install directory
 
    ```bash
-   cp ~/ocp4-metal-install/install-config.yaml ~/ocp-install
+   cp ~/ocp4-metal-install/files/install-config.yaml ~/ocp-install
    ```
 
 1. Update the install-config.yaml with your own pull-secret and ssh key.
@@ -422,6 +430,7 @@
    ```bash
    ~/openshift-install create ignition-configs --dir ~/ocp-install/
    ```
+
 
 1. Create a hosting directory to serve the configuration files for the OpenShift booting process
 

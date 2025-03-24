@@ -1,0 +1,48 @@
+---
+disk: sda # disk name
+helper: # Bastion host
+  name: ""
+  ipaddr: ""
+dns:
+  domain: ""
+  clusterid: ""
+  forwarder1: "" # internal DNS Server
+  forwarder2: ""
+dhcp:
+  router: ""
+  bcast: ""
+  netmask: ""
+  poolstart: ""
+  poolend: ""
+  ipid: ""
+  netmaskid: ""
+bootstrap: # Boostrap
+  name: ""
+  ipaddr: ""
+  macaddr: ""
+masters:
+  - name: ""
+    ipaddr: ""
+    macaddr: ""
+  - name: ""
+    ipaddr: ""
+    macaddr: ""
+  - name: ""
+    ipaddr: ""
+    macaddr: ""
+workers:
+  - name: ""
+    ipaddr: ""
+    macaddr: ""
+  - name: ""
+    ipaddr: ""
+    macaddr: ""
+  - name: ""
+    ipaddr: ""
+    macaddr: ""
+  - name: ""
+    ipaddr: ""
+    macaddr: ""
+  - name: ""
+    ipaddr: ""
+    macaddr: ""

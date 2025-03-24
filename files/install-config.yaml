@@ -1,0 +1,27 @@
+apiVersion: v1
+baseDomain: gh.rr.edekanet.de # Domain
+proxy: # Proxy
+  httpProxy: http://10.132.0.55:8080
+  httpsProxy: http://10.132.0.55:8080
+  noProxy: gh.rr.edekanet.de, 10.32.144.0/24
+compute:
+  - hyperthreading: Enabled # HT: each physical CPU core will run two threads, improving parallel execution.
+    name: worker
+    replicas: 0 # Must be set to 0 for User Provisioned Installation as worker nodes will be manually deployed.
+controlPlane:
+  hyperthreading: Enabled
+  name: master
+  replicas: 3
+metadata:
+  name: cpd # Cluster name
+networking:
+  clusterNetwork:
+    - cidr: 10.254.0.0/16 # The entire Pod network range.
+      hostPrefix: 24 # each node will receive a /24 subnet (256 IPs) from the Pod network.
+  networkType: OpenShiftSDN
+  serviceNetwork:
+    - 172.30.0.0/16
+platform:
+  none: {}
+pullSecret: '{"auths": ...}' # TODO
+sshKey: "ssh-ed25519 AAAA..." # TODO

@@ -18,8 +18,6 @@
 
 ## Reference
 
-
-
 - [Redhat: User-provisioned infrastructure installation on bare metal](https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/installing_on_bare_metal/installing-restricted-networks-bare-metal#installing-restricted-networks-bare-metal)
 
 <!-- - [Requirements for CP4D Installation]() -->
@@ -27,6 +25,13 @@
 ## Architecture Diagram
 
 ![Architecture Diagram](./diagram/Architecture.png)
+
+## Double Check
+Does the old Cluster have Mirror Registry?
+```bash
+oc get image.config.openshift.io cluster -o jsonpath='{.spec.registrySources}' | jq
+oc get imagecontentsourcepolicy -A
+```
 
 ## Download Software
 

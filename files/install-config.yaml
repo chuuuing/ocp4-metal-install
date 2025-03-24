@@ -18,7 +18,7 @@ networking:
   clusterNetwork:
     - cidr: 10.254.0.0/16 # The entire Pod network range.
       hostPrefix: 24 # each node will receive a /24 subnet (256 IPs) from the Pod network.
-  networkType: OpenShiftSDN
+  networkType: OpenShiftSDN # CNI
   serviceNetwork:
     - 172.30.0.0/16
 platform:

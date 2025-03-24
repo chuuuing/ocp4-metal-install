@@ -83,7 +83,7 @@ oc get imagecontentsourcepolicy -A
 1. Create 5 Worker virtual machines (or more if you want) with the following settings: (resources requirements for CP4D)
    - Name: ocp-w-# (Example ocp-w-1)
    - 32vcpu
-   - 126GB RAM
+   - 128GB RAM
    - 300GB Virtual Disk
    - NIC connected to the OCP network
    - Load the rhcos-X.X.X-x86_64-installer.x86_64.iso image into the CD/DVD drive
@@ -104,10 +104,15 @@ oc get imagecontentsourcepolicy -A
 
 1. Boot the ocp-bastion VM
 
+
 1. Move the files downloaded from the RedHat Cluster Manager site to the ocp-bastion node
 
    ```bash
-   scp ~/Downloads/openshift-install-linux.tar.gz ~/Downloads/openshift-client-linux.tar.gz ~/Downloads/rhcos-metal.x86_64.raw.gz root@{ocp-bastion_IP_address}:/root/
+   # Download
+   wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.17.9/openshift-client-linux-4.17.9.tar.gz
+   wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.17.9/openshift-install-linux-4.17.9.tar.gz
+   
+   # scp ~/Downloads/openshift-install-linux.tar.gz ~/Downloads/openshift-client-linux.tar.gz ~/Downloads/rhcos-metal.x86_64.raw.gz root@{ocp-bastion_IP_address}:/root/
    ```
 
 1. SSH to the ocp-bastion vm

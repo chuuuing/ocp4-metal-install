@@ -1,8 +1,15 @@
 ---
-disk: sda # disk name
-helper: # Bastion host
+proxy:
+  http_proxy: ""
+  https_proxy: ""
+secret:
+  pullSecret: ""
+  sshkey: ""
+
+bastion: # Bastion host
   name: ""
   ipaddr: ""
+  disk: "" # disk name
 dns:
   domain: ""
   clusterid: ""

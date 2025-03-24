@@ -104,6 +104,11 @@ oc get imagecontentsourcepolicy -A
 
 1. Boot the ocp-bastion VM
 
+1. SSH to the ocp-bastion vm
+
+   ```bash
+   ssh root@{ocp-bastion_IP_address}
+   ```
 
 1. Move the files downloaded from the RedHat Cluster Manager site to the ocp-bastion node
 
@@ -111,34 +116,28 @@ oc get imagecontentsourcepolicy -A
    # Download
    wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.17.9/openshift-client-linux-4.17.9.tar.gz
    wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.17.9/openshift-install-linux-4.17.9.tar.gz
-   
-   # scp ~/Downloads/openshift-install-linux.tar.gz ~/Downloads/openshift-client-linux.tar.gz ~/Downloads/rhcos-metal.x86_64.raw.gz root@{ocp-bastion_IP_address}:/root/
    ```
 
-1. SSH to the ocp-bastion vm
+
+
+1. Extract Client tools and copy them to `/usr/bin` (or `/usr/local/bin`)
 
    ```bash
-   ssh root@{ocp-bastion_IP_address}
-   ```
+   # unzip downloaded file to get the Binaries
+   tar -xvf openshift-client-linux-4.6.4.tar.gz -C /usr/bin/
+   tar -xvf openshift-install-linux-4.6.4.tar.gz -C /usr/bin/
 
-1. Extract Client tools and copy them to `/usr/local/bin`
-
-   ```bash
-   tar xvf openshift-client-linux.tar.gz
-   mv oc kubectl /usr/local/bin
+   # enable bash cmd auto-completion
+   oc completion bash > /etc/bash_completion.d/openshift
+   openshift-install completion bash > /etc/bash_completion.d/openshift-install
    ```
 
 1. Confirm Client Tools are working
 
    ```bash
-   kubectl version
+   # validation
    oc version
-   ```
-
-1. Extract the OpenShift Installer
-
-   ```bash
-   tar xvf openshift-install-linux.tar.gz
+   openshift-install version
    ```
 
 1. Update CentOS so we get the latest packages for each of the services we are about to install
